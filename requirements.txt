@@ -1,0 +1,9 @@
+pydantic
+langchain
+openai
+langchain-openai
+langchain-gemini
+langchain_groq
+python-dotenv
+langchain-core
+langchain-community
