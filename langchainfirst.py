@@ -6,6 +6,7 @@ from langchain_core.prompts  import ChatPromptTemplate
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, Field
      
 
 load_dotenv()
@@ -67,3 +68,24 @@ prompt_template = PromptTemplate(
 chain2 = prompt_template | llm | outpur_parser
 response3 = chain2.invoke({"topic":"Kubernetes"})
 print(response3)
+
+
+# Using Custom JSON Object with JSON Output Parser
+
+
+
+class CalculatoionResult(BaseModel):
+    explaination: str = Field(description="Reasoning for the calculation")
+    result: float = Field(description="The result of the calculation")
+
+maths_parser= JsonOutputParser(pydantic_object=CalculatoionResult)
+
+prompt_template2 = PromptTemplate(
+    input_variables=["calculation"],
+    template="Perform the following calculation: {calculation}. Provide your answer in the format {format_instructions}.",
+    partial_variables={"format_instructions": maths_parser.get_format_instructions()} 
+)
+
+chain3 = prompt_template2 | llm | maths_parser
+response5 = chain3.invoke({"calculation":"3*(2+5)+7"})
+print(response5)
