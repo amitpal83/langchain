@@ -26,7 +26,7 @@ groq_llm= ChatGroq(model_name="qwen/qwen3-32b", temperature=0)
 # Using Prompt Templates 
 prompt_template = PromptTemplate(
     input_variables=["topic"],
-    template=".Explain the concept of {topic} in simple terms.",
+    template="Explain the concept of {topic} in simple terms.",
 )
 message_format= prompt_template.format(topic="Microservices")
 response4 = llm.invoke(message_format)

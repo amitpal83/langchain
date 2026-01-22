@@ -7,3 +7,6 @@ langchain_groq
 python-dotenv
 langchain-core
 langchain-community
+pypdf
+beautifulsoup4
+langchain-text-splitters
