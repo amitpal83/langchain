@@ -10,3 +10,5 @@ langchain-community
 pypdf
 beautifulsoup4
 langchain-text-splitters
+faiss-cpu
+scikit-learn

@@ -12,6 +12,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+from sklearn.metrics.pairwise import cosine_similarity
+import faiss
+from langchain_community.vectorstores import FAISS
+from langchain_community.docstore import InMemoryDocstore
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+
 
 
 
@@ -29,40 +35,71 @@ os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
 speechloader= TextLoader(file_path="speech.txt", encoding="utf-8")
 documents= speechloader.load()
 
-# print(documents)
+def splitStoreVectors(documents, vector_store):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50
+    )
 
-# Initialize LLMs
-llm= ChatOpenAI(model_name="gpt-4o", temperature=0)
+    all_chunks = []
 
-prompt= ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful AI assistant that can identify the content and find details about the content "),
-    ("human", "Content to identify is: {input}")])
+    for i, report in enumerate(documents, start=1):
+        chunks = text_splitter.split_text(report.page_content)
+        print(f"Document {i} → {len(chunks)} chunks")
+        all_chunks.extend(chunks)
+    print(f"Total chunks: {len(all_chunks)}")
+    # Add ALL chunks at once
+    vector_store.add_texts(all_chunks)
+    # Save ONCE
+    vector_store.save_local("faiss_index")
 
-parser= StrOutputParser()
+def queryVectorStore(vector_store, query):
+    docs = vector_store.similarity_search(
+        query,
+        k=5
+    )   
+    return docs
 
-chain= prompt | llm | parser
-content = chain.invoke({"input": documents[0].page_content})
 
-#pdf loader
-loader = PyPDFLoader("sample-report.pdf")
-reports =loader.load()
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
 
-#Webbased Loader
-
-web_loader= WebBaseLoader("https://langchain.com/docs/getting-started/introduction/")
+loader = PyPDFLoader("waisl.pdf")
 loader.requests_kwargs = {'verify':False}
-web_documents= web_loader.load()
-# print(web_documents[0].page_content)    
+documents =loader.load()
+print("Total pages" + str(len(documents)));
 
  #Open AI embeddings
-embeddings= OpenAIEmbeddings(model="text-embedding-3-large")
+embeddings= OpenAIEmbeddings(model="text-embedding-3-small")
+faiss_index = faiss.IndexFlatL2(1536)  # Dimension for text-embedding-3-large is 1536
+vector_store = FAISS(embeddings, faiss_index, InMemoryDocstore({}), {})
 
-i=0
-for report in reports:
-    i=i+1;
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
-    texts = text_splitter.split_text(report.page_content)
-    print(f'Number of document {i} ',texts)
-    vector = embeddings.embed_documents(texts)
-    print(vector)
+splitStoreVectors(documents, vector_store)
+new_vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+results = queryVectorStore(new_vector_store, "Revenue of WAISL in 2024-25") 
 
+# Initialize the LLM ,  prompt and parser
+llm= ChatOpenAI(model_name="gpt-4o", temperature=0)
+prompt= ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful AI assistant and have to read the text provided by the retriever in Context and answer the question asked by the user based on that text only. If you don't know the answer, just say that you don't know, don't try to make up an answer."),
+    ("user", "Context: {context} \n\n Question: {question}")
+])
+parser= StrOutputParser()
+
+# Create RAG chain
+context_runnable = RunnableLambda(lambda _: format_docs(results))
+rag_chain = (
+    {
+        "context": context_runnable,
+        "question": RunnablePassthrough()
+    }
+    | prompt
+    | llm
+    | parser
+)
+
+content = rag_chain.invoke(
+    "What is the revenue of WAISL for 2024-25 and how would you rate the revenue growth compared to previous years?"
+)
+
+print(content)
