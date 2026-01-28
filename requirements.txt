@@ -13,3 +13,4 @@ langchain-text-splitters
 faiss-cpu
 scikit-learn
 langchain-tavily
+youtube_search
