@@ -12,3 +12,4 @@ beautifulsoup4
 langchain-text-splitters
 faiss-cpu
 scikit-learn
+langchain-tavily
