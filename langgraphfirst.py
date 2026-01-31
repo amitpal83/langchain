@@ -78,29 +78,9 @@ resultmultiply = multiply.invoke({'a':5,'b':6})
 print(f"Multiplication Result: {resultmultiply}")
 
 
-def function1(input):
-    """This is function 1"""
-    
-    print(f"Function 1 executed {input}")
 
-def function2(input):
-    """This is function 2"""
-    print(f"Function 2 executed {input}")
 
-function1('amit')
-function2('kumar')
-
-# workflow_graph = Graph()
-
-# workflow_graph.add_node()
-# workflow_graph.add_node(Node(id="function2", func=function2, description="This is function 2"))
-# workflow_graph.add_edge(Edge(from_node="function1", to_node="function2"))
-# workflow_graph.set_entry_point("function1")
-# workflow_graph.set_exit_point("function2")
-# app= workflow_graph.compile()
-
-# display(Image(app.get_graph().draw_mermaid_png()))
-
+# State Class
 
 class GraphState(TypedDict):
     input: str
@@ -108,35 +88,79 @@ class GraphState(TypedDict):
 
 firstgraph = StateGraph(GraphState)
 
-
+# Greeting Node
 def greeting_node(state: GraphState) -> GraphState:
     print(state["input"])
     state["input"] = f"Hello, {state['input']} welcome to the LangGraph!"
     return state
 
 
-firstgraph.add_node("greeting node", greeting_node)
 
+
+#Farewell Node
 def farewell_node(state: GraphState) -> GraphState:
     print(state["input"])
     state["input"] = f"Thanks for exploring..Goodbye! {state['input']} Have a great day!"
     print(state["input"])
     return state
 
+# Creating Graph
+firstgraph.add_node("greeting node", greeting_node)
 firstgraph.add_node("farewell node", farewell_node)
-
 firstgraph.add_edge("greeting node", "farewell node")
-
 firstgraph.set_entry_point("greeting node")
 firstgraph.set_finish_point("farewell node")
-
 app= firstgraph.compile()
-
 png_bytes = app.get_graph().draw_mermaid_png()
 
+
+# Storing the graph as png
 with open("workflow_graph.png", "wb") as f:
     f.write(png_bytes)
-
 print("Saved workflow_graph.png in current folder")
 
-app.invoke({"input": "Amit" }) 
+
+#Invoking the graph
+response = app.invoke({"input": "Amit" }) 
+print(response)
+
+for res in app.stream({"input": "Amit"}):
+    for key, value in res.items():
+        print(f"Key is {key} , Value is {value}")
+
+
+# Adding workflow with llm
+
+def llm_call_with_graph(state: GraphState) -> GraphState:
+    chat_model = init_chat_model(model="gpt-4o", model_provider="openai", temperature=0)
+    prompt = f"You are an AI Assistant and please provide brief answer: {state['input']}"
+    response = chat_model.invoke([{"role": "user", "content": prompt}])
+    state["input"] = response
+    print(state["input"])
+    return state
+
+def token_counter(state: GraphState) -> GraphState:
+    token_count = state["input"].response_metadata["token_usage"]["total_tokens"]
+    print(f"Total tokens in the quote: {token_count}")
+    content = f"Response: {state['input'].content}\nTotal Tokens Used: {token_count}"
+    state["input"] = content
+    return state
+
+workflow_llm_graph = StateGraph(GraphState)
+workflow_llm_graph.add_node("llm node", llm_call_with_graph)
+workflow_llm_graph.add_node("token counter node", token_counter)
+workflow_llm_graph.add_edge("llm node", "token counter node")
+workflow_llm_graph.set_entry_point("llm node")
+workflow_llm_graph.set_finish_point("token counter node")    
+
+app_llm = workflow_llm_graph.compile()
+
+bytes = app_llm.get_graph().draw_mermaid_png()
+
+with open("llm_workflow_graph.png", "wb") as f:
+    f.write(bytes)
+
+print("Saved llm_workflow_graph.png in current folder")
+
+response_llm = app_llm.invoke({"input": "Who won the 2020 Wimbledon in Males?" })
+print(f"response llm is {response_llm}");

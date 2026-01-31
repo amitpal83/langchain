@@ -15,3 +15,5 @@ scikit-learn
 langchain-tavily
 youtube_search
 ipython
+chromadb
+langchain-chroma
