@@ -6,6 +6,9 @@ from langchain_community.tools import YouTubeSearchTool
 import os
 import getpass
 from dotenv import load_dotenv
+from langgraph.graph import StateGraph, START, END
+from IPython.display import display, Image
+from typing import TypedDict
 
 
 load_dotenv()
@@ -73,3 +76,67 @@ def multiply(a: int, b: int) -> int:
 
 resultmultiply = multiply.invoke({'a':5,'b':6})
 print(f"Multiplication Result: {resultmultiply}")
+
+
+def function1(input):
+    """This is function 1"""
+    
+    print(f"Function 1 executed {input}")
+
+def function2(input):
+    """This is function 2"""
+    print(f"Function 2 executed {input}")
+
+function1('amit')
+function2('kumar')
+
+# workflow_graph = Graph()
+
+# workflow_graph.add_node()
+# workflow_graph.add_node(Node(id="function2", func=function2, description="This is function 2"))
+# workflow_graph.add_edge(Edge(from_node="function1", to_node="function2"))
+# workflow_graph.set_entry_point("function1")
+# workflow_graph.set_exit_point("function2")
+# app= workflow_graph.compile()
+
+# display(Image(app.get_graph().draw_mermaid_png()))
+
+
+class GraphState(TypedDict):
+    input: str
+
+
+firstgraph = StateGraph(GraphState)
+
+
+def greeting_node(state: GraphState) -> GraphState:
+    print(state["input"])
+    state["input"] = f"Hello, {state['input']} welcome to the LangGraph!"
+    return state
+
+
+firstgraph.add_node("greeting node", greeting_node)
+
+def farewell_node(state: GraphState) -> GraphState:
+    print(state["input"])
+    state["input"] = f"Thanks for exploring..Goodbye! {state['input']} Have a great day!"
+    print(state["input"])
+    return state
+
+firstgraph.add_node("farewell node", farewell_node)
+
+firstgraph.add_edge("greeting node", "farewell node")
+
+firstgraph.set_entry_point("greeting node")
+firstgraph.set_finish_point("farewell node")
+
+app= firstgraph.compile()
+
+png_bytes = app.get_graph().draw_mermaid_png()
+
+with open("workflow_graph.png", "wb") as f:
+    f.write(png_bytes)
+
+print("Saved workflow_graph.png in current folder")
+
+app.invoke({"input": "Amit" }) 

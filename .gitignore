@@ -1,3 +1,4 @@
 .env
 faiss_index/
 waisl.pdf
+workflow_graph.png
