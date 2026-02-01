@@ -5,3 +5,4 @@ workflow_graph.png
 chroma_langchain_db/
 workflow_agent_graph.png
 llm_workflow_graph.png
+tool_graph.png
