@@ -79,6 +79,7 @@ def router_call(state: AgentState) :
 chat_model = init_chat_model(model="gpt-4o", model_provider="openai", temperature=0)
 chat_model_with_tool = chat_model.bind_tools([provideWeatherDetails])
 
+memory_saver=MemorySaver()
 
 tool_node = ToolNode([provideWeatherDetails])
 
@@ -90,22 +91,26 @@ tool_graph.add_conditional_edges("llm node", router_call, {
 )
 tool_graph.add_edge("tool node", "llm node")
 tool_graph.set_entry_point("llm node")
+tool_graph.set_finish_point("llm node")
 
-
-app = tool_graph.compile()
+config={"configurable":{"thread_id":"t1"}}
+app = tool_graph.compile(checkpointer=memory_saver)
 print("Generating tool_graph.png in current folder")
 bytes = app.get_graph().draw_mermaid_png()
 
 with open("tool_graph.png", "wb") as f:
     f.write(bytes)
 
-response = app.stream({
-     "messages": [HumanMessage(content="What is weather in France?") ]})    
+    
 
-for res in response:
-    for key, value in res.items():
-        print(f"Key is {key} , Value is {value}")
-
+for state in  app.stream(
+    {"messages": [HumanMessage(content="What is weather in France?") ]},config= config , stream_mode="values"):
+    state["messages"][-1].pretty_print()
 
 
 
+
+print("Before printing memory")
+
+mem_response = memory_saver.get(config)
+print(mem_response)
