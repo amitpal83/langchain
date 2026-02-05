@@ -18,8 +18,7 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 import os
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
-
-
+from langchain_community.tools import DuckDuckGoSearchRun
 
 load_dotenv()
 
@@ -33,24 +32,31 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
 
 
-
+@tool
+def add(a: int, b: int) -> int:
+    '''Adds two integers and returns the result.'''
+    print("In the tool add")
+    return a + b
 
 @tool
-def provideWeatherDetails(location: str) -> str:
-    '''Provides weather details for a given location.'''
-    # Dummy implementation for weather details
-    print("In the tool provideWeatherDetails")
+def divide(a: int, b: int) -> float:
+    '''Divides two integers and returns the result.'''
+    print("In the tool divide")
+    return a / b
 
-    if "delhi" in location.lower():
-        return f"The current weather in Delhi is sunny with a temperature of 35°C."
-    return f"The current weather is sunny with a temperature of 25°C."
+@tool
+def multiply(a: int, b: int) -> int:
+    '''Multiplies two integers and returns the result.'''
+    print("In the tool multiply")
+    return a * b
 
+@tool
+def subtract(a: int, b: int) -> int:
+    '''Subtracts two integers and returns the result.'''
+    print("In the tool subtract")
+    return a - b
 
-# chat_model_with_tool = chat_model.bind_tools([provideWeatherDetails])
-# response_with_tool = chat_model_with_tool.invoke("What is the temperature in delhi?")
-# print(response_with_tool.content)
-
-
+search=DuckDuckGoSearchRun()
 
 tool_graph = StateGraph(AgentState)
 
@@ -61,7 +67,6 @@ def llm_call_with_graph(state: AgentState) -> AgentState:
     response = chat_model_with_tool.invoke(
         state["messages"]
     )
-    
     return {"messages": [response]}
 
 def router_call(state: AgentState) :
@@ -74,13 +79,10 @@ def router_call(state: AgentState) :
     else:
         return END
 
-       
-
 chat_model = init_chat_model(model="gpt-4o", model_provider="openai", temperature=0)
-chat_model_with_tool = chat_model.bind_tools([provideWeatherDetails])
+chat_model_with_tool = chat_model.bind_tools([add, divide, multiply, search])
 
-
-tool_node = ToolNode([provideWeatherDetails])
+tool_node = ToolNode([add, divide, multiply, search])
 
 tool_graph.add_node("llm node", llm_call_with_graph)
 tool_graph.add_node("tool node", tool_node)
@@ -96,16 +98,10 @@ app = tool_graph.compile()
 print("Generating tool_graph.png in current folder")
 bytes = app.get_graph().draw_mermaid_png()
 
-with open("tool_graph.png", "wb") as f:
+with open("multiple_tool_graph.png", "wb") as f:
     f.write(bytes)
 
-response = app.stream({
-     "messages": [HumanMessage(content="What is weather in France?") ]})    
+response = app.invoke({
+     "messages": [HumanMessage(content="What is 2 times the age of Narendra Modi in years?") ]})    
 
-for res in response:
-    for key, value in res.items():
-        print(f"Key is {key} , Value is {value}")
-
-
-
-
+print(response)

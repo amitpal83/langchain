@@ -17,3 +17,5 @@ youtube_search
 ipython
 chromadb
 langchain-chroma
+duckduckgo-search
+ddgs

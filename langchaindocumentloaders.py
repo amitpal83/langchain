@@ -34,6 +34,7 @@ os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
 
 speechloader= TextLoader(file_path="speech.txt", encoding="utf-8")
 documents= speechloader.load()
+print(f"Number of documents loaded: {len(documents)}")
 
 def splitStoreVectors(documents, vector_store):
     text_splitter = RecursiveCharacterTextSplitter(
